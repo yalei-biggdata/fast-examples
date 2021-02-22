@@ -5,22 +5,23 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.InternalRow;
-import org.apache.spark.sql.execution.datasources.*;
+import org.apache.spark.sql.execution.datasources.FileFormat;
+import org.apache.spark.sql.execution.datasources.FileFormat$class;
+import org.apache.spark.sql.execution.datasources.OutputWriterFactory;
+import org.apache.spark.sql.execution.datasources.PartitionedFile;
 import org.apache.spark.sql.internal.SQLConf;
 import org.apache.spark.sql.sources.Filter;
 import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
+import org.apache.spark.unsafe.types.UTF8String;
 import org.apache.spark.util.SerializableConfiguration;
 import scala.Function1;
 import scala.Option;
@@ -30,10 +31,10 @@ import scala.collection.Seq;
 import scala.collection.immutable.Map;
 import scala.collection.mutable.ListBuffer;
 import scala.runtime.AbstractFunction1;
+import self.robin.examples.spark.sources.SparkWorkbookHelper;
 
-import java.io.InputStream;
+import java.io.IOException;
 import java.io.Serializable;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,41 +48,12 @@ public class ExcelDataSource implements FileFormat, Serializable {
 
     @Override
     public Option<StructType> inferSchema(SparkSession sparkSession, Map<String, String> options, Seq<FileStatus> files) {
-        XlsxOptions xlsxOptions = new XlsxOptions(options);
+        ExcelOptions xlsxOptions = new ExcelOptions(options);
 
-        java.util.Map<FileStatus, Workbook> fileWb = new java.util.HashMap<>();
-
-        for (FileStatus fileStatus : (List<FileStatus>)JavaConversions.seqAsJavaList(files)) {
-            Workbook wb = parseWorkbook(sparkSession.sparkContext().hadoopConfiguration(), fileStatus.getPath().toString());
-            fileWb.put(fileStatus, wb);
-        }
-
-        if (fileWb.isEmpty()) {
-            throw new RuntimeException("At least one input file required");
-        }
-
-        return (Option<StructType>)Option.apply(inferHeaders(sparkSession, xlsxOptions, fileWb));
-    }
-
-    /**
-     * parse headers from file
-     *
-     * @param sparkSession
-     * @param options
-     * @param workbooks
-     * @return
-     */
-    public StructType inferHeaders(SparkSession sparkSession, XlsxOptions options, java.util.Map<FileStatus, Workbook> workbooks) {
-        //Iterator<InternalRow> vals = readFile(options, sparkSession.sparkContext().hadoopConfiguration(), workbooks.values().iterator().next(), null);
-        
-        return new StructType(new StructField[]{
-                new StructField("a", DataTypes.StringType, true, null),
-                new StructField("b", DataTypes.StringType, true, null),
-                new StructField("c", DataTypes.StringType, true, null),
-                new StructField("d", DataTypes.StringType, true, null),
-                new StructField("e", DataTypes.StringType, true, null)
-        });
-        //return new StructType();
+        //TODO: 此处 schema 的解析未做详细实现
+        StructType structType = new StructType().add("aa", DataTypes.StringType.typeName())
+                .add("bb", DataTypes.StringType.typeName());
+        return Option.apply(structType);
     }
 
     @Override
@@ -108,8 +80,6 @@ public class ExcelDataSource implements FileFormat, Serializable {
 
 
         return FileFormat$class.buildReaderWithPartitionValues(this, sparkSession, dataSchema, partitionSchema, requiredSchema, filters, options, hadoopConf);
-
-        //return buildReader(sparkSession, dataSchema, partitionSchema, requiredSchema, filters, options, hadoopConf);
     }
 
     @Override
@@ -126,8 +96,7 @@ public class ExcelDataSource implements FileFormat, Serializable {
                                                                          Map<String, String> options,
                                                                          Configuration hadoopConf) {
         //TODO verify schema
-        val xlsxOptions = new XlsxOptions(options);
-
+        val xlsxOptions = new ExcelOptions(options);
         Broadcast<SerializableConfiguration> broadcastedHadoopConf = JavaSparkContext.fromSparkContext(sparkSession.sparkContext())
                 .broadcast(new SerializableConfiguration(hadoopConf));
 
@@ -142,9 +111,9 @@ public class ExcelDataSource implements FileFormat, Serializable {
 
         private StructType requiredSchema;
         private Broadcast<SerializableConfiguration> hadoopConf;
-        private XlsxOptions xlsxOptions;
+        private ExcelOptions xlsxOptions;
 
-        public InternalFunction1(StructType requiredSchema, Broadcast<SerializableConfiguration> hadoopConf, XlsxOptions xlsxOptions) {
+        public InternalFunction1(StructType requiredSchema, Broadcast<SerializableConfiguration> hadoopConf, ExcelOptions xlsxOptions) {
             this.requiredSchema = requiredSchema;
             this.hadoopConf = hadoopConf;
             this.xlsxOptions = xlsxOptions;
@@ -153,29 +122,13 @@ public class ExcelDataSource implements FileFormat, Serializable {
         @Override
         public Iterator<InternalRow> apply(PartitionedFile file) {
             Configuration config = hadoopConf.getValue().value();
-            Workbook wb = parseWorkbook(config, file.filePath());
-            return readFile(xlsxOptions, config, wb, requiredSchema);
-        }
-    }
 
-    private Workbook parseWorkbook(Configuration hadoopConf, String filePath) {
-        try {
-            InputStream inputStream = CodecStreams.createInputStreamWithCloseResource(hadoopConf, new Path(new URI(filePath)));
-
-            String extString = filePath.substring(filePath.lastIndexOf("."));
-
-            Workbook workbook;
-            if (".xls".equalsIgnoreCase(extString)) {
-                workbook = new HSSFWorkbook(inputStream);
-            } else if (".xlsx".equalsIgnoreCase(extString)) {
-                workbook = new XSSFWorkbook(inputStream);
-            } else {
-                throw new RuntimeException("File format is not supported");
+            try(Workbook wb = SparkWorkbookHelper.createWorkbook(file.filePath(), config)) {
+                return readFile(xlsxOptions, config, wb, requiredSchema);
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
             }
-            return workbook;
-            // CSVDataSource(parsedOptions).readFile(conf, file, parser, requiredSchema)
-        } catch (Exception e) {
-            throw new RuntimeException(e);
         }
     }
 
@@ -186,7 +139,7 @@ public class ExcelDataSource implements FileFormat, Serializable {
      * @param hadoopConf
      * @return
      */
-    public Iterator<InternalRow> readFile(XlsxOptions options, Configuration hadoopConf, Workbook workbook, StructType requiredSchema) {
+    public Iterator<InternalRow> readFile(ExcelOptions options, Configuration hadoopConf, Workbook workbook, StructType requiredSchema) {
 
         ListBuffer<InternalRow> rowListBuffer = new ListBuffer();
 
@@ -212,10 +165,11 @@ public class ExcelDataSource implements FileFormat, Serializable {
                             cellBuffer.add(cell.getBooleanCellValue());
                             break;
                         case STRING:
-                            cellBuffer.add(cell.getStringCellValue());
+                            cellBuffer.add(UTF8String.fromString(cell.getStringCellValue()));
                             break;
                         case BLANK:
                             cellBuffer.add(null);
+                            break;
                         default:
                             throw new RuntimeException("unSupport cell type");
                     }

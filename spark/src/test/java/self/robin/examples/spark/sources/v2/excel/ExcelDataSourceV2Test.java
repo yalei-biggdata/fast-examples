@@ -6,7 +6,9 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.junit.Test;
+import self.robin.examples.spark.sources.excel.ExcelDataSource;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -18,12 +20,20 @@ import java.util.Map;
 public class ExcelDataSourceV2Test {
 
     @Test
-    public void testDs2(){
-        Map<String, String> env = System.getenv();
-        String homePath = System.getenv("HOMEPATH");
-        String downloadPath = "C:/Users/liyalei/Downloads/";
-
+    public void testDsV2(){
         String dataSource = ExcelDataSourceV2.class.getName();
+        test(dataSource);
+    }
+
+    @Test
+    public void testDs(){
+        String dataSource = ExcelDataSource.class.getName();
+        test(dataSource);
+    }
+
+    private void test(String dataSource){
+        String downloadPath = "file:/C:/Users/liyalei/Downloads/";
+
         String path = downloadPath + "ds-test.xlsx";
 
         SparkSession spark = SparkSession.builder().master("local[2]").appName("local test").getOrCreate();
@@ -38,11 +48,7 @@ public class ExcelDataSourceV2Test {
                 //可选: 指定 schema 信息
 //                .option("schema", new Gson().toJson(schemaMap))
                 //必填：是否有表头
-                .option("headers", true)
-                //可选：startRow, default:1
-                .option("startRow", 1)
-                //可选：startRow, default:1
-                .option("startCol", 3)
+                .option("header", true)
                 //必填：文件路径，多个路径用逗号分隔
                 .load(path);
 

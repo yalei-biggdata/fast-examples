@@ -6,6 +6,7 @@ import org.apache.hadoop.util.StringUtils;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.catalyst.expressions.GenericRow;
 import org.apache.spark.sql.catalyst.parser.CatalystSqlParser;
 import org.apache.spark.sql.internal.SQLConf;
 import org.apache.spark.sql.sources.v2.DataSourceOptions;
@@ -18,13 +19,14 @@ import org.apache.spark.sql.types.Metadata;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.util.SerializableConfiguration;
+import self.robin.examples.spark.sources.SheetIterator;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static self.robin.examples.spark.sources.v2.excel.SparkWorkbookHelper.*;
+import static self.robin.examples.spark.sources.SparkWorkbookHelper.*;
 
 /**
  * @Description: ...
@@ -93,8 +95,6 @@ public class ExcelDataSourceV2 implements DataSourceV2, ReadSupport, Serializabl
 
         private void tryParseColsFromFiles(){
             boolean header = options.getBoolean("header", false);
-            int startRow = options.getInt("startRow", 1);
-            int startCol = options.getInt("startCol", 1);
             //尝试从excel解析
             //默认取第一个表单
             //要求所有excel表单中的列必须一样多
@@ -103,7 +103,7 @@ public class ExcelDataSourceV2 implements DataSourceV2, ReadSupport, Serializabl
                 try {
                     Workbook wb = createWorkbook(path, getConfiguration());
                     //默认取第一个表单
-                    List<String> cols = getColumnNames(wb.getSheetAt(0), startRow, startCol, header);
+                    List<String> cols = getColumnNames(wb.getSheetAt(0), 1, 1, header);
                     //保存首个解析出的列名
                     if(colNames.isEmpty()){
                         colNames.addAll(cols);
@@ -134,14 +134,12 @@ public class ExcelDataSourceV2 implements DataSourceV2, ReadSupport, Serializabl
 
             SerializableConfiguration serConfig = new SerializableConfiguration(getConfiguration());
             boolean header = options.getBoolean("header", false);
-            int startRow = options.getInt("startRow", 1);
-            int startCol = options.getInt("startCol", 1);
 
             return paths.parallelStream().map(path -> new DataReaderFactory<Row>() {
 
                 @Override
                 public DataReader<Row> createDataReader() {
-                    return new WorkbookReader(startRow, startCol, header, path, serConfig);
+                    return new WorkbookReader(header, path, serConfig);
                 }
             }).collect(Collectors.toList());
         }
@@ -153,7 +151,6 @@ public class ExcelDataSourceV2 implements DataSourceV2, ReadSupport, Serializabl
         private Configuration getConfiguration(){
             SparkSession spark = SparkSession.getActiveSession().get();
             Configuration config = spark.sparkContext().hadoopConfiguration();
-            config.set("develop.master", spark.sparkContext().master());
             return config;
         }
     }
@@ -178,13 +175,11 @@ public class ExcelDataSourceV2 implements DataSourceV2, ReadSupport, Serializabl
 
         /**
          * excel文件的path信息，以及表单中数据的位置信息
-         * @param startRow 数据在表单的起始行
-         * @param startCol 数据在表单的起始列
-         * @param header 首行是否是表头（首行的定义是=>startRow所在行）
+         * @param header 首行是否是表头
          * @param path 文件路径
          * @param configuration hadoop
          */
-        public WorkbookReader(int startRow, int startCol, boolean header, String path,
+        public WorkbookReader(boolean header, String path,
                               SerializableConfiguration configuration) {
             this.header = header;
             this.path = path;
@@ -200,7 +195,7 @@ public class ExcelDataSourceV2 implements DataSourceV2, ReadSupport, Serializabl
         private void init(Configuration conf) {
             try {
                 this.workbook = createWorkbook(path, conf);
-                this.sheetIterator = new SheetIterator(0, this.workbook.iterator());
+                this.sheetIterator = new SheetIterator(header, this.workbook.iterator());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -213,7 +208,8 @@ public class ExcelDataSourceV2 implements DataSourceV2, ReadSupport, Serializabl
 
         @Override
         public Row get() {
-            return poiRow2SparkRow(this.sheetIterator.next());
+            Object[] values = cellValuesInRow(this.sheetIterator.next());
+            return new GenericRow(values);
         }
 
         @Override

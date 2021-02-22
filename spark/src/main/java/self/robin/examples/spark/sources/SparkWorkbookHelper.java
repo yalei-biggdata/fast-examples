@@ -1,4 +1,4 @@
-package self.robin.examples.spark.sources.v2.excel;
+package self.robin.examples.spark.sources;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -8,7 +8,6 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.apache.spark.sql.catalyst.expressions.GenericRow;
 import org.apache.spark.sql.execution.datasources.CodecStreams;
 
 import java.io.FileInputStream;
@@ -75,14 +74,7 @@ public interface SparkWorkbookHelper {
      */
     static Workbook createWorkbook(String path, Configuration conf) throws IOException {
 
-        InputStream inputStream;
-
-        String developModel = conf.get("develop.master");
-        if (developModel.startsWith("local")) {
-            inputStream = new FileInputStream(path);
-        } else {
-            inputStream = CodecStreams.createInputStreamWithCloseResource(conf, new Path(path));
-        }
+        InputStream inputStream = CodecStreams.createInputStreamWithCloseResource(conf, new Path(path));
 
         try(InputStream is = inputStream){
             if (path.endsWith(".xls")) {
@@ -97,11 +89,11 @@ public interface SparkWorkbookHelper {
 
 
     /**
-     * 将excel中的row 转化为 rdd中的 row
+     * 提取row中的cell的值
      * @param row
-     * @return
+     * @return 返回cell值的数组
      */
-    static org.apache.spark.sql.Row poiRow2SparkRow(org.apache.poi.ss.usermodel.Row row) {
+    static Object[] cellValuesInRow(org.apache.poi.ss.usermodel.Row row) {
         Iterator<Cell> cellIte = row.cellIterator();
 
         List cellBuffer = new ArrayList();
@@ -125,6 +117,7 @@ public interface SparkWorkbookHelper {
                     throw new RuntimeException("unSupport cell type " + cell.getCellTypeEnum());
             }
         }
-        return new GenericRow(cellBuffer.toArray());
+        return cellBuffer.toArray();
     }
+
 }

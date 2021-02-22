@@ -10,11 +10,11 @@ import java.io.Serializable;
  * @Author: Li Yalei - Robin
  * @Date: 2020/12/23 14:05
  */
-public class XlsxOptions implements Serializable {
+public class ExcelOptions implements Serializable {
 
     private Map<String, String> options;
 
-    public XlsxOptions(Map<String, String> options) {
+    public ExcelOptions(Map<String, String> options) {
         this.options = options;
     }
 

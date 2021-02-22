@@ -1,4 +1,4 @@
-package self.robin.examples.spark.sources.v2.excel;
+package self.robin.examples.spark.sources;
 
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -13,14 +13,17 @@ import java.util.Iterator;
  */
 public class SheetIterator implements Iterator<Row>, Serializable {
 
-    /** startRow */
-    private int startRow;
+
+
+    /** 是否首行是header */
+    private boolean header;
 
     private Iterator<Sheet> sheetIterator;
 
     private Iterator<Row> rowIterator;
 
-    public SheetIterator(int startRow, Iterator<Sheet> sheetIterator){
+    public SheetIterator(boolean header, Iterator<Sheet> sheetIterator){
+        this.header = header;
         this.sheetIterator = sheetIterator;
     }
 
@@ -32,8 +35,8 @@ public class SheetIterator implements Iterator<Row>, Serializable {
                 return false;
             }
             this.rowIterator = this.sheetIterator.next().rowIterator();
-            int count = 0;
-            while (count++<startRow) {
+            if(header){
+                //首行是标题
                 this.rowIterator.next();
             }
         }
