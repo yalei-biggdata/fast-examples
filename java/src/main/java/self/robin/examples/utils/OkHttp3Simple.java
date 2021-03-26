@@ -16,7 +16,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
- * @Description: ...
+ * @Description: 对 OkHttpClient 的简单封装，主要是返回值的处理，以及增加重试机制
  * @Author: Li Yalei - Robin
  * @Date: 2021/1/27 19:10
  */
@@ -98,16 +98,32 @@ public class OkHttp3Simple implements Serializable {
     }
 
     /**
-     * get请求
+     * get or post 请求
      * 返回结果为输入流，注意关闭流
      *
-     * @param url
-     * @param param
+     * @param requestType      post or get
+     * @param url              地址
+     * @param param            入参
      * @param exceptionHandler
      * @return
      */
-    public InputStream getInputStream(String url, Map<String, Object> param, Consumer<Exception> exceptionHandler) {
-        return get(url, param, response -> (response == null || !response.isSuccessful()) ? null : response.body().byteStream(), exceptionHandler);
+    public InputStream inputStream(RequestType requestType, String url, Map<String, Object> param, Consumer<Exception> exceptionHandler) {
+        switch (requestType) {
+            case GET:
+                return get(url, param, response -> (response == null || !response.isSuccessful()) ? null : response.body().byteStream(), exceptionHandler);
+            case POST:
+                return post(url, param, response -> (response == null || !response.isSuccessful()) ? null : response.body().byteStream(), exceptionHandler);
+            default:
+                throw new IllegalArgumentException("不支持的请求类型" + requestType);
+        }
+    }
+
+    public InputStream inputStreamSilently(RequestType requestType, String url, Map<String, Object> param) {
+        return inputStream(requestType, url, param, exception -> { });
+    }
+
+    public String get(String url, Consumer<Exception> exceptionHandler) {
+        return get(url, null, String.class, exceptionHandler);
     }
 
     public String get(String url, Map<String, Object> param, Consumer<Exception> exceptionHandler) {
@@ -278,6 +294,10 @@ public class OkHttp3Simple implements Serializable {
         }
     }
 
+    public enum RequestType {
+        GET, POST;
+    }
+
     /**
      * 重试的条件
      */
@@ -361,4 +381,3 @@ public class OkHttp3Simple implements Serializable {
 
     }
 }
-
