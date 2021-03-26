@@ -11,6 +11,7 @@
     <modules>
         <module>spark</module>
         <module>hadoop</module>
+        <module>java</module>
     </modules>
     <name>examples</name>
     <description>examples project</description>
