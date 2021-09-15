@@ -2,6 +2,7 @@ package self.robin.examples.utils.ibatis;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.ibatis.builder.xml.XMLConfigBuilder;
 import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.MappedStatement;
@@ -10,7 +11,6 @@ import org.apache.ibatis.session.Configuration;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.io.support.ResourcePatternResolver;
-import self.robin.examples.utils.JavassistUtil;
 
 import java.io.StringReader;
 import java.lang.reflect.Field;
@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
+ * mappers xml 解析器, 提取sql
+ *
  * @author mrli
  * @date 2020/8/3
  */
@@ -32,20 +34,17 @@ public class MappersParser {
 
     private Configuration configuration;
 
-    public MappersParser(String mappersPath){
-        this.mappersPath = mappersPath;
-    }
-
-    public MappersParser(Configuration configuration){
-        this.configuration = configuration;
-    }
-
-    public void parse(){
+    public MappersParser(String mappersPath) {
+        this.mappersPath = Objects.requireNonNull(mappersPath);
         try {
             this.configuration = innerParse();
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public MappersParser(Configuration configuration) {
+        this.configuration = Objects.requireNonNull(configuration);
     }
 
     public Configuration getConfiguration() {
@@ -55,8 +54,8 @@ public class MappersParser {
     /**
      * 构造配置文件
      */
-    private Configuration innerParse() throws Exception{
-        if(StringUtils.isBlank(mappersPath)){
+    private Configuration innerParse() throws Exception {
+        if (StringUtils.isBlank(mappersPath)) {
             throw new RuntimeException("mapperLocations is null");
         }
 
@@ -76,16 +75,16 @@ public class MappersParser {
         Resource[] res = resourceResolver.getResources(mappersPath);
         for (Resource resource : res) {
             String fileClasspath = pickClasspath(resource.getURI());
-            sbd.append("<mapper resource=\""+fileClasspath+"\"/>");
+            sbd.append("<mapper resource=\"" + fileClasspath + "\"/>");
         }
         sbd.append(" </mappers>");
 
         sbd.append("</configuration>");
         XMLConfigBuilder builder = new XMLConfigBuilder(new StringReader(sbd.toString()));
-        return  builder.parse();
+        return builder.parse();
     }
 
-    private static String pickClasspath(URI fileUri){
+    private static String pickClasspath(URI fileUri) {
         String uri = fileUri.toString();
         uri = StringUtils.substringAfterLast(uri, "/classes");
         return StringUtils.substringAfter(uri, "/");
@@ -93,38 +92,39 @@ public class MappersParser {
 
     /**
      * 将对象解析为，sql语句中对应的变量
+     *
      * @param id
      * @param param
      * @return
      */
-    public SqlModel getAndFlatParam(String id, Object param){
-        log.debug("[DB] id="+id+", databseId="+configuration.getDatabaseId());
+    public SqlModel getAndFlatParam(String id, Object param) {
+        log.debug("[DB] id=" + id + ", databseId=" + configuration.getDatabaseId());
         MappedStatement ms = configuration.getMappedStatement(id);
-        Objects.requireNonNull(ms, "未找到id为"+id+"的sql定义");
+        Objects.requireNonNull(ms, "未找到id为" + id + "的sql定义");
         BoundSql boundSql = ms.getBoundSql(param);
-        Objects.requireNonNull(boundSql, "未找到id为"+id+"，且参数类型为"+param.getClass()+"的sql定义");
+        Objects.requireNonNull(boundSql, "未找到id为" + id + "，且参数类型为" + param.getClass() + "的sql定义");
 
         String sql = boundSql.getSql();
         Class<?> clazz = param.getClass();
 
         List<Object> paramList = new ArrayList<>();
-        if(Map.class.isAssignableFrom(clazz)){
-            Map mapTmp = (Map)param;
+        if (Map.class.isAssignableFrom(clazz)) {
+            Map mapTmp = (Map) param;
             for (ParameterMapping parameterMapping : boundSql.getParameterMappings()) {
                 String property = parameterMapping.getProperty();
                 paramList.add(mapTmp.get(property));
             }
-        }else{
+        } else {
             for (ParameterMapping parameterMapping : boundSql.getParameterMappings()) {
                 String property = parameterMapping.getProperty();
-                try{
-                    Field field = JavassistUtil.getDeclaredFieldInFamily(clazz, property);
-                    if(field==null){
-                        throw new RuntimeException("can't found property  "+property+" from Class "+clazz);
+                try {
+                    Field field = FieldUtils.getDeclaredField(clazz, property);
+                    if (field == null) {
+                        throw new RuntimeException("can't found property  " + property + " from Class " + clazz);
                     }
                     field.setAccessible(true);
                     paramList.add(field.get(param));
-                }catch (Exception e){
+                } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
             }
@@ -133,7 +133,7 @@ public class MappersParser {
         return new SqlModel(sql, params);
     }
 
-    public static class SqlModel{
+    public static class SqlModel {
         private String sql;
         private Object[] params;
 

@@ -27,9 +27,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author mrli
  * @date 2020/8/3
  */
-public class PagedRunner extends CurdRunner {
+public class PagedExecutor extends CurdExecutor {
 
-    public PagedRunner(DataSource dataSource, Configuration configuration) {
+    public PagedExecutor(DataSource dataSource, Configuration configuration) {
         super(dataSource, configuration);
     }
 
