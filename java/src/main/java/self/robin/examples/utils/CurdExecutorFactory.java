@@ -1,7 +1,7 @@
 package self.robin.examples.utils;
 
 import com.alibaba.druid.pool.DruidDataSourceFactory;
-import self.robin.examples.utils.ibatis.CurdExecutor;
+import self.robin.examples.utils.ibatis.CurdRunner;
 
 import javax.sql.DataSource;
 import java.util.Properties;
@@ -19,10 +19,10 @@ public class CurdExecutorFactory {
      */
     private final String MAPPER_LOCATIONS_KEY = "mapper-locations";
 
-    public static CurdExecutor newDruidSource(String url, String user, String passwd) throws Exception {
+    public static CurdRunner newDruidSource(String url, String user, String passwd) throws Exception {
         Properties properties = new Properties();
         DataSource dataSource = DruidDataSourceFactory.createDataSource(properties);
-        return new CurdExecutor(dataSource);
+        return new CurdRunner(dataSource);
     }
 
 }

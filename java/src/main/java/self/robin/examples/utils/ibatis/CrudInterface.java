@@ -22,4 +22,5 @@ public interface CrudInterface {
 
     <T, E> T select(String id, Object param, Class<T> resultType, Class<E> elementType);
 
+    boolean execute(String sql);
 }

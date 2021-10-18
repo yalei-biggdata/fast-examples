@@ -34,6 +34,10 @@ public class TstOutputFormat {
     private static FileSystem fs = null;
 //    private static MiniMRCluster mrCluster = null;
 
+    @Test
+    public void testBreak() throws Exception {
+    }
+
     private static void createWorkDir() throws IOException {
         String testDir = System.getProperty("test.tmp.dir", "./");
         testDir = testDir + "/test_output_format/";

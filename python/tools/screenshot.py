@@ -7,6 +7,7 @@ import random
 import string
 import threading
 import time
+import urllib
 
 import uvicorn as uvicorn
 from PIL import Image
@@ -96,13 +97,13 @@ class ScreenshotTool(object):
         if (not url.startswith('http')) and (not url.startswith('https')):
             raise Exception("url 不合法，必须以http 或 https开头")
         try:
-            split_index = url.index('/', 8)
-            url_prefix = url[0:split_index]
-            return url_prefix, url
+            parse = urllib.parse.urlparse(url)
+            url_prefix = parse.scheme + '://' + parse.netloc
+            return parse.netloc, url_prefix, url
         except Exception as e:
             raise Exception('url不合法，' + ''.join(e.args))
 
-    def addAuth(self, auth: Auth):
+    def addAuth(self, auth: Auth, domain: string = ''):
         driver = self.driver
         if auth is None:
             return
@@ -110,6 +111,8 @@ class ScreenshotTool(object):
         if auth.type is None or auth.type == 'cookie':
             # default or specify cookie
             cookie = {'name': auth.key, 'value': auth.val}
+            if domain != '':
+                cookie['domain'] = domain
             driver.add_cookie(cookie)
         elif auth.type == 'header':
             # specify header
@@ -145,7 +148,7 @@ class ScreenshotTool(object):
 
     def getBase64Img(self, param: InputParam):
         session_id = param.sessionId
-        url_prefix, url = self.validUrl(param.url)
+        domain, url_prefix, url = self.validUrl(param.url)
 
         driver = self.driver
         # 1. init domain
@@ -155,7 +158,7 @@ class ScreenshotTool(object):
         self.addAuth(param.auth)
         # 3. request url
         driver.get(url)
-        printLog('request ' + url, session_id)
+        printLog('request ' + url + ', current_url: ' + driver.current_url, session_id)
         # 4. wait load time
         if param.waitLoadTime is not None:
             time.sleep(param.waitLoadTime)
@@ -168,9 +171,11 @@ class ScreenshotTool(object):
 
         # 如果有locator
         locator = self.parseLocator(param.locator)
-        element = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located(locator)
-        )
+        try:
+            element = WebDriverWait(driver, 8).until(EC.presence_of_element_located(locator))
+        except Exception as e:
+            raise Exception('未找到元素，定位参数：' + str(locator) + ', msg=' + str(e))
+        # get element
         printLog('find element done.', session_id)
 
         # 5. screenshot

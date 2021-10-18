@@ -7,6 +7,9 @@ import org.apache.ibatis.builder.xml.XMLConfigBuilder;
 import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.MappedStatement;
 import org.apache.ibatis.mapping.ParameterMapping;
+import org.apache.ibatis.mapping.SqlSource;
+import org.apache.ibatis.parsing.XNode;
+import org.apache.ibatis.scripting.xmltags.XMLScriptBuilder;
 import org.apache.ibatis.session.Configuration;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
@@ -23,8 +26,8 @@ import java.util.Objects;
 /**
  * mappers xml 解析器, 提取sql
  *
- * @author mrli
- * @date 2020/8/3
+ * @author robin - li
+ * @since 2019/8/3
  */
 
 @Slf4j
@@ -90,6 +93,20 @@ public class MappersParser {
         return StringUtils.substringAfter(uri, "/");
     }
 
+    public BoundSql getBoundSql(String id, Object param) {
+        log.debug("[DB] id=" + id + ", databseId=" + configuration.getDatabaseId());
+        MappedStatement ms = configuration.getMappedStatement(id);
+        if (ms == null) {
+            XNode sqlFragment = configuration.getSqlFragments().get(id);
+            Class<? extends Object> clazz = param == null ? Object.class : param.getClass();
+            XMLScriptBuilder builder = new XMLScriptBuilder(configuration, sqlFragment, clazz);
+            SqlSource sqlSource = builder.parseScriptNode();
+            return sqlSource.getBoundSql(param);
+        }
+        Objects.requireNonNull(ms, "未找到id为" + id + "的sql定义");
+        return ms.getBoundSql(param);
+    }
+
     /**
      * 将对象解析为，sql语句中对应的变量
      *
@@ -98,13 +115,8 @@ public class MappersParser {
      * @return
      */
     public SqlModel getAndFlatParam(String id, Object param) {
-        log.debug("[DB] id=" + id + ", databseId=" + configuration.getDatabaseId());
-        MappedStatement ms = configuration.getMappedStatement(id);
-        Objects.requireNonNull(ms, "未找到id为" + id + "的sql定义");
-        BoundSql boundSql = ms.getBoundSql(param);
+        BoundSql boundSql = getBoundSql(id, param);
         Objects.requireNonNull(boundSql, "未找到id为" + id + "，且参数类型为" + param.getClass() + "的sql定义");
-
-        String sql = boundSql.getSql();
         Class<?> clazz = param.getClass();
 
         List<Object> paramList = new ArrayList<>();
@@ -130,7 +142,7 @@ public class MappersParser {
             }
         }
         Object[] params = paramList.toArray(new Object[0]);
-        return new SqlModel(sql, params);
+        return new SqlModel(boundSql.getSql(), params);
     }
 
     public static class SqlModel {
