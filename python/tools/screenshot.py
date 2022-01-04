@@ -26,7 +26,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 # ======== global config =======
 # service start port
-port = 8090
+port = 9088
 # chrome install path
 binary_location = None
 # chrome 驱动path
@@ -60,7 +60,7 @@ class InputParam(BaseModel):
     url: str  # 待截图的页面地址
     waitLoadTime: int = None  # 等待页面加载时间，单位秒
     auth: Auth = None
-    locator: Locator = None
+    locators: list[Locator] = None
     sessionId: str = ''
 
 
@@ -76,6 +76,7 @@ class ScreenshotTool(object):
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-gpu')
         options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--window-size=1960,1080')
 
         # chrome_driver_path = "C:\Program Files (x86)\Google\Chrome\Application\chromedriver.exe"
         driver = webdriver.Chrome(executable_path=path, options=options)
@@ -146,6 +147,47 @@ class ScreenshotTool(object):
             return By.NAME, locator.val
         raise Exception('不支持的by in locator, by=' + locator.by)
 
+    def genImgByLocator(self, locator: Locator, session_id: str):
+        driver = self.driver
+        image_name = ''.join(random.sample(string.ascii_letters + string.digits, 16)) + '.png'
+        if locator is None:
+            # 如果没有 locator 全屏截图返回
+            driver.save_screenshot(image_name)
+            return [self.toBase64(image_name)]
+
+        # 如果有locator
+        real_locator = self.parseLocator(locator)
+        try:
+            element = WebDriverWait(driver, 8).until(EC.presence_of_element_located(real_locator))
+        except Exception as e:
+            raise Exception('未找到元素，定位参数：' + str(real_locator) + ', msg=' + str(e))
+        # get element
+        printLog('find element done.', session_id)
+
+        # 5. screenshot
+        driver.execute_script("document.getElementsByTagName('body')[0].style.overflowX='hidden'")
+        driver.execute_script("document.getElementsByTagName('body')[0].style.overflowY='hidden'")
+        driver.save_screenshot(image_name)  # 对整个浏览器页面进行截图
+
+        # 6. img location
+        left = element.location['x']
+        top = element.location['y']
+        driver.set_window_size(1960, top + 1080)
+        right = left + element.size['width']
+        bottom = top + element.size['height']
+        # crop img
+        crop_image = 'c_' + image_name
+        im = Image.open(image_name)
+        im = im.crop((left, top, right, bottom))  # 对浏览器截图进行裁剪
+        im.save(crop_image)
+
+        printLog("img generated.", session_id)
+        try:
+            return self.toBase64(crop_image)
+        finally:
+            os.remove(image_name)
+            os.remove(crop_image)
+
     def getBase64Img(self, param: InputParam):
         session_id = param.sessionId
         domain, url_prefix, url = self.validUrl(param.url)
@@ -163,45 +205,15 @@ class ScreenshotTool(object):
         if param.waitLoadTime is not None:
             time.sleep(param.waitLoadTime)
         # 5. find locator
-        image_name = ''.join(random.sample(string.ascii_letters + string.digits, 16)) + '.png'
-        if param.locator is None:
+        if param.locators is None:
             # 如果没有 locator 全屏截图返回
-            driver.save_screenshot(image_name)
-            return self.toBase64(image_name)
+            raise Exception('locators 不能为空')
 
-        # 如果有locator
-        locator = self.parseLocator(param.locator)
-        try:
-            element = WebDriverWait(driver, 8).until(EC.presence_of_element_located(locator))
-        except Exception as e:
-            raise Exception('未找到元素，定位参数：' + str(locator) + ', msg=' + str(e))
-        # get element
-        printLog('find element done.', session_id)
-
-        # 5. screenshot
-        right = element.location['x'] + element.size['width']
-        bottom = element.location['y'] + element.size['height']
-        driver.set_window_size(right, bottom)
-
-        driver.execute_script("document.getElementsByTagName('body')[0].style.overflowX='hidden'")
-        driver.execute_script("document.getElementsByTagName('body')[0].style.overflowY='hidden'")
-        driver.save_screenshot(image_name)  # 对整个浏览器页面进行截图
-
-        # 6. crop img
-        left = element.location['x']
-        top = element.location['y']
-
-        crop_image = 'c_' + image_name
-        im = Image.open(image_name)
-        im = im.crop((left, top, right, bottom))  # 对浏览器截图进行裁剪
-        im.save(crop_image)
-
-        printLog("img generated.", session_id)
-        try:
-            return self.toBase64(crop_image)
-        finally:
-            os.remove(image_name)
-            os.remove(crop_image)
+        img_list = []
+        for locator in param.locators:
+            img_list.append(self.genImgByLocator(locator, session_id))
+        printLog(str(img_list), 'img_list')
+        return img_list
 
 
 def invoke(param: InputParam):

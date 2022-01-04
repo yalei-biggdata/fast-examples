@@ -5,10 +5,14 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.apache.commons.lang3.StringUtils;
 
+import javax.net.ssl.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.net.SocketTimeoutException;
+import java.security.KeyStore;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -24,6 +28,12 @@ import java.util.function.Supplier;
 public class OkHttp3Simple implements Serializable {
 
     public final static OkHttp3Simple DEFAULT = new OkHttp3Simple(new OkHttpClient());
+
+    public final static OkHttp3Simple SSL = OkHttp3Simple.newBuilder().init(builder -> {
+        SSLSocketClient client = new SSLSocketClient();
+        builder.sslSocketFactory(client.getSSLSocketFactory(), client.getX509TrustManager());
+        builder.hostnameVerifier(client.getHostnameVerifier());
+    }).build();
 
     private OkHttpClient httpClient;
 
@@ -93,8 +103,7 @@ public class OkHttp3Simple implements Serializable {
      * @return
      */
     public <T> T getSilently(String url, Map<String, Object> param, Class<T> clazz) {
-        return get(url, param, clazz, exception -> {
-        });
+        return get(url, param, clazz, null);
     }
 
     /**
@@ -119,7 +128,17 @@ public class OkHttp3Simple implements Serializable {
     }
 
     public InputStream inputStreamSilently(RequestType requestType, String url, Map<String, Object> param) {
-        return inputStream(requestType, url, param, exception -> { });
+        return inputStream(requestType, url, param, null);
+    }
+
+    public String get(String url) {
+        return get(url, null, String.class, exception -> {
+            throw new RuntimeException(exception);
+        });
+    }
+
+    public Response getResponse(String url, Map<String, Object> param) {
+        return get(url, param, Response.class);
     }
 
     public String get(String url, Consumer<Exception> exceptionHandler) {
@@ -142,6 +161,12 @@ public class OkHttp3Simple implements Serializable {
         return response.apply(get(url, param, Response.class, exceptionHandler));
     }
 
+    public <T> T get(String url, Map<String, Object> param, Class<T> clazz) {
+        return get(url, param, clazz, exception -> {
+            throw new RuntimeException(exception);
+        });
+    }
+
     /**
      * 发送post请求,
      * 注意：Silently意为：忽略异常，失败时或者异常时返回 null
@@ -151,7 +176,12 @@ public class OkHttp3Simple implements Serializable {
      * @return
      */
     public String postSilently(String url, Map<String, Object> param) {
+        return post(url, param, String.class, null);
+    }
+
+    public String post(String url, Map<String, Object> param) {
         return post(url, param, String.class, exception -> {
+            throw new RuntimeException(exception);
         });
     }
 
@@ -169,6 +199,9 @@ public class OkHttp3Simple implements Serializable {
      */
     public <T> T post(String url, Map<String, Object> param, Function<Response, T> response, Consumer<Exception> exceptionHandler) {
         return response.apply(post(url, param, Response.class, exceptionHandler));
+    }
+
+    private void doNothing(Object input) {
     }
 
     /**
@@ -204,19 +237,29 @@ public class OkHttp3Simple implements Serializable {
         return requestInternal(param, () -> request, clazz, exceptionHandler);
     }
 
+    public <T> T post(String url, Map<String, Object> param, Class<T> clazz, Consumer<Exception> exceptionHandler) {
+        return post(url, param, clazz, this::doNothing, exceptionHandler);
+    }
+
     /**
      * post请求
      *
      * @param url              地址
      * @param param            参数
      * @param clazz            返回类型
+     * @param requestPreSet    request参数预设
      * @param exceptionHandler 异常时的处理
      * @param <T>
      * @return
      */
-    public <T> T post(String url, Map<String, Object> param, Class<T> clazz, Consumer<Exception> exceptionHandler) {
+    public <T> T post(String url, Map<String, Object> param, Class<T> clazz, Consumer<Request.Builder> requestPreSet, Consumer<Exception> exceptionHandler) {
         return requestInternal(param,
-                () -> new Request.Builder().url(url).post(RequestBody.create(MediaType.parse("application/json"), param.toString())).build()
+                () -> {
+                    Request.Builder requestBuilder = new Request.Builder().url(url)
+                            .post(RequestBody.create(MediaType.parse("application/json"), new Gson().toJson(param)));
+                    requestPreSet.accept(requestBuilder);
+                    return requestBuilder.build();
+                }
                 , clazz, exceptionHandler);
     }
 
@@ -308,8 +351,11 @@ public class OkHttp3Simple implements Serializable {
         Exception;
 
         public boolean shouldRetry(Throwable throwable) {
+            if (throwable == null) {
+                return false;
+            }
             if (throwable instanceof SocketTimeoutException ||
-                    throwable instanceof Exception) {
+                    java.lang.Exception.class.isAssignableFrom(throwable.getClass())) {
                 return true;
             }
             return false;
@@ -380,4 +426,61 @@ public class OkHttp3Simple implements Serializable {
         }
 
     }
+
+    public static class SSLSocketClient {
+
+        //获取这个SSLSocketFactory
+        public SSLSocketFactory getSSLSocketFactory() {
+            try {
+                SSLContext sslContext = SSLContext.getInstance("SSL");
+                sslContext.init(null, getTrustManager(), new SecureRandom());
+                return sslContext.getSocketFactory();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        //获取TrustManager
+        private TrustManager[] getTrustManager() {
+            return new TrustManager[]{
+                    new X509TrustManager() {
+                        @Override
+                        public void checkClientTrusted(X509Certificate[] chain, String authType) {
+                        }
+
+                        @Override
+                        public void checkServerTrusted(X509Certificate[] chain, String authType) {
+                        }
+
+                        @Override
+                        public X509Certificate[] getAcceptedIssuers() {
+                            return new X509Certificate[]{};
+                        }
+                    }
+            };
+        }
+
+        //获取HostnameVerifier
+        public HostnameVerifier getHostnameVerifier() {
+            return (s, sslSession) -> true;
+        }
+
+        public X509TrustManager getX509TrustManager() {
+            X509TrustManager trustManager = null;
+            try {
+                TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                trustManagerFactory.init((KeyStore) null);
+                TrustManager[] trustManagers = trustManagerFactory.getTrustManagers();
+                if (trustManagers.length != 1 || !(trustManagers[0] instanceof X509TrustManager)) {
+                    throw new IllegalStateException("Unexpected default trust managers:" + Arrays.toString(trustManagers));
+                }
+                trustManager = (X509TrustManager) trustManagers[0];
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            return trustManager;
+        }
+    }
+
 }
