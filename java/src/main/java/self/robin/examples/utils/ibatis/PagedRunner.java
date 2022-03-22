@@ -24,8 +24,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * @author mrli
- * @date 2020/8/3
+ * @author robin - li
+ * @since 2019/8/3
  */
 public class PagedRunner extends CurdRunner {
 
@@ -44,12 +44,12 @@ public class PagedRunner extends CurdRunner {
         int parallel = 2;
         CountDownLatch countDownLatch = new CountDownLatch(parallel);
         AtomicLong total = new AtomicLong(0);
-        new Thread(()->{
+        new Thread(() -> {
             total.set(countTotal(sqlModel));
             countDownLatch.countDown();
         }).start();
         List<T> pageData = new ArrayList<>();
-        new Thread(()->{
+        new Thread(() -> {
             pageData.addAll(pageData(sqlModel, resultType, page, orderBy));
             countDownLatch.countDown();
         }).start();
@@ -72,15 +72,15 @@ public class PagedRunner extends CurdRunner {
     }
 
 
-    private <T> List<T> pageData(MappersParser.SqlModel sqlModel, Class<T> resultType, Page<T> page, String... orderBy){
+    private <T> List<T> pageData(MappersParser.SqlModel sqlModel, Class<T> resultType, Page<T> page, String... orderBy) {
 
         AtomicBoolean hasOrder = new AtomicBoolean(false);
         SQLStatementParser parser = SQLParserUtils.createSQLStatementParser(sqlModel.getSql(), com.alibaba.druid.util.JdbcUtils.MYSQL);
-        SQLASTVisitor visitor = new SQLASTVisitorAdapter(){
+        SQLASTVisitor visitor = new SQLASTVisitorAdapter() {
 
             @Override
             public boolean visit(SQLOrderBy x) {
-                if(orderBy!=null){
+                if (orderBy != null) {
                     for (String s : orderBy) {
                         SQLSelectOrderByItem item = new SQLSelectOrderByItem();
                         item.setExpr(new SQLCharExpr(s));
@@ -100,21 +100,21 @@ public class PagedRunner extends CurdRunner {
         select.accept(visitor);
 
         String sql = select.toString();
-        if(!hasOrder.get()){
-            sql += " ORDER BY "+ String.join(",", orderBy);
+        if (!hasOrder.get()) {
+            sql += " ORDER BY " + String.join(",", orderBy);
         }
 
-        int offset = (page.getPageNum()>0?page.getPageNum()-1:0)*page.getPageSize();
-        sql += " LIMIT "+offset+","+page.getPageSize();
+        int offset = (page.getPageNum() > 0 ? page.getPageNum() - 1 : 0) * page.getPageSize();
+        sql += " LIMIT " + offset + "," + page.getPageSize();
 
         List<T> list = selectList(sql, sqlModel.getParams(), resultType);
         return list;
     }
 
-    private Long countTotal(MappersParser.SqlModel sqlModel){
+    private Long countTotal(MappersParser.SqlModel sqlModel) {
 
         SQLStatementParser parser = SQLParserUtils.createSQLStatementParser(sqlModel.getSql(), com.alibaba.druid.util.JdbcUtils.MYSQL);
-        SQLASTVisitor visitor = new SQLASTVisitorAdapter(){
+        SQLASTVisitor visitor = new SQLASTVisitorAdapter() {
 
             @Override
             public boolean visit(SQLSelect x) {
@@ -138,10 +138,10 @@ public class PagedRunner extends CurdRunner {
         String countSqlStr = select.toString();
         Long count = selectOne(countSqlStr, sqlModel.getParams(), Long.class);
 
-        return count==null ? Long.valueOf(0) : count.longValue();
+        return count == null ? Long.valueOf(0) : count.longValue();
     }
 
-    public static class Page<T>{
+    public static class Page<T> {
 
         private int pageNum;
 
@@ -154,7 +154,7 @@ public class PagedRunner extends CurdRunner {
         public Page() {
         }
 
-        public void addAll(List<T> data){
+        public void addAll(List<T> data) {
             this.data.addAll(data);
         }
 

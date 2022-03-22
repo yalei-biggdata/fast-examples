@@ -14,12 +14,13 @@ public interface CrudInterface {
 
     <T> T selectOne(String id, Object param, Class<T> resultType);
 
-    <T> T selectOne(String sqlStr, Object[] params, Class<T> resultType) ;
+    <T> T selectOne(String sqlStr, Object[] params, Class<T> resultType);
 
     <T> List<T> selectList(String id, Object param, Class<T> resultType);
 
     <T> List<T> selectList(String sqlStr, Object[] params, Class<T> resultType);
 
-    <T,E> T select(String id, Object param, Class<T> resultType, Class<E> elementType);
+    <T, E> T select(String id, Object param, Class<T> resultType, Class<E> elementType);
 
+    boolean execute(String sql);
 }

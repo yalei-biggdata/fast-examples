@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.qiyi.bi.predict.dao.IRoleMapper">
+
+    <sql id="createTbl">
+		update table a set f=1 where  d =#{dd} and
+		<if test="true">
+		     1==1
+	    </if>
+	</sql>
+
+	<select id="selecc">
+		select  * from tableq where <if test="true">
+			1==1 and #{name} = 'a'
+		</if>
+	</select>
+
+</mapper>
