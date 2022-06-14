@@ -2,8 +2,6 @@ package self.robin.examples;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.common.restartstrategy.RestartStrategies;
-import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
@@ -15,7 +13,7 @@ import org.apache.flink.streaming.api.functions.source.SourceFunction;
  * @since: 2022-04-14 19:24
  */
 @Slf4j
-public class ExceptionRestartJava {
+public class ExceptionRestartJavaDemo {
 
     public static void main(String[] args) throws Exception {
 
@@ -56,7 +54,7 @@ public class ExceptionRestartJava {
         }).print();
 
         // run
-        env.execute("jobName: " + ExceptionRestartJava.class.getSimpleName());
+        env.execute("jobName: " + ExceptionRestartJavaDemo.class.getSimpleName());
     }
 
 }

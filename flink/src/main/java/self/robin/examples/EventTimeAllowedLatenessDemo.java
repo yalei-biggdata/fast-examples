@@ -27,7 +27,7 @@ import java.util.Iterator;
  * @since: 2022-05-25 16:41
  */
 @Slf4j
-public class CheckPointDemo {
+public class EventTimeAllowedLatenessDemo {
 
     public static void main(String[] args) throws Exception {
 
@@ -61,7 +61,7 @@ public class CheckPointDemo {
                     }
                 })
                 .window(TumblingEventTimeWindows.of(Time.seconds(5)))
-                .allowedLateness(Time.seconds(6))
+                //.allowedLateness(Time.seconds(6))
                 .process(new ProcessWindowFunction<DataWithTime, DataWithTime, String, TimeWindow>() {
                     @Override
                     public void process(String key,

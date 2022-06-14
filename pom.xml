@@ -13,6 +13,7 @@
         <module>hadoop</module>
         <module>java</module>
         <module>commons</module>
+        <module>flink</module>
     </modules>
     <name>examples</name>
     <description>examples project</description>
