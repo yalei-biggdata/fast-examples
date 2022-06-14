@@ -68,7 +68,6 @@ public class MyDataAnnotationProcessor extends AbstractProcessor {
                     super.visitClassDef(jcClassDecl);
                 }
             });
-
         }
 
 
