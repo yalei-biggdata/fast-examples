@@ -14,7 +14,7 @@ public class ProcessorTest {
     }
 
 
-    @MyData
+    //@MyData
     private String name;
 
 }
