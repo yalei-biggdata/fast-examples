@@ -1,3 +1,4 @@
+import com.alibaba.druid.sql.parser.SQLParserUtils;
 import com.couchbase.client.core.env.SearchServiceConfig;
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.CouchbaseCluster;
@@ -12,6 +13,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.apache.commons.exec.util.MapUtils;
 import org.apache.commons.lang3.ObjectUtils;
+import org.junit.Test;
 
 import javax.naming.ldap.HasControls;
 import java.util.*;
@@ -30,60 +32,69 @@ import java.util.stream.Collectors;
  */
 public class Asss {
 
-    public static void main(String[] args) {
-        Action1 action1 = new Action1() {
-            @Override
-            public Object run1() throws Exception {
-                return "111";
-            }
-        };
-        new Dog1((Callable) action1);
-    }
+    @Test
+    public void test() {
 
-    @Data
-    @AllArgsConstructor
-    static class ObjX {
+        Like like = new Like();
+        And and = new And();
 
-        private int id;
+        List<BinaryExpression> list = Arrays.asList(like, and);
 
-        private String name;
-
-    }
-
-    public void doMethod() {
-        new Dog(this::process);
-    }
-
-    class Dog {
-        public Dog(Action action) {
+        ExpressionVisitor visitor = new ExpressionVisitor();
+        for (BinaryExpression binaryExpression : list) {
+            binaryExpression.accept(visitor);
         }
     }
 
-    static class Dog1<V>{
-        public Dog1(Callable<V> callable){
-            try {
-                System.out.println(callable.call());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+    interface Expression {
+
+        <R> R accept(Visitor<R> visitor);
+
+        String asString();
+    }
+
+    abstract class BinaryExpression implements Expression {
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visit(this);
+        }
+
+
+    }
+
+    class Like extends BinaryExpression {
+
+        String str = "like";
+
+        @Override
+        public String asString() {
+            return str;
         }
     }
 
+    class And extends BinaryExpression {
 
+        String str = "and";
 
-    public void process(Action.Controller c) {
-    }
-
-    public interface Action {
-
-        void runDefaultAction(Controller controller) throws Exception;
-
-        interface Controller {
+        @Override
+        public String asString() {
+            return str;
         }
     }
 
-    public interface Action1<V>{
+    interface Visitor<R> {
 
-        V run1() throws Exception;
+        R visit(BinaryExpression binaryExpression);
     }
+
+    class ExpressionVisitor implements Visitor<String> {
+
+        @Override
+        public String visit(BinaryExpression binaryExpression) {
+            System.out.println("==>" + binaryExpression.asString());
+            return null;
+        }
+    }
+
 }

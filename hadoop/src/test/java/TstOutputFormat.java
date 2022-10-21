@@ -21,7 +21,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Properties;
 
-import static org.mockito.Mockito.mock;
 
 /**
  * @author Li Yalei - Robin
@@ -115,13 +114,12 @@ public class TstOutputFormat {
         tableProps.setProperty("columns", "foo,bar");
         tableProps.setProperty("columns.types", "int:int");
 
-        final Progressable mockProgress = mock(Progressable.class);
 
         String workPath = workDir.getAbsolutePath();
         System.out.println("workDir=" + workPath);
 
         AdhocExportOutputFormat<WritableComparable, Writable> outputFormat = new AdhocExportOutputFormat<>();
-        FileSinkOperator.RecordWriter writer = outputFormat.getHiveRecordWriter(jc, new Path(workPath + "/foo.txt"), null, false, tableProps, mockProgress);
+        FileSinkOperator.RecordWriter writer = outputFormat.getHiveRecordWriter(jc, new Path(workPath + "/foo.txt"), null, false, tableProps, null);
 
 
     }
