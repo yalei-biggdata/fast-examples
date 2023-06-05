@@ -2,8 +2,13 @@ import akka.actor.AbstractLoggingActor;
 import akka.actor.ActorSystem;
 import akka.actor.IllegalActorStateException;
 import akka.japi.pf.ReceiveBuilder;
+import org.junit.Before;
+import org.junit.Test;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
+
+import java.io.*;
+import java.util.UUID;
 
 /**
  * ...
@@ -13,27 +18,44 @@ import scala.runtime.BoxedUnit;
  */
 public class ActorTest {
 
-    public static void main(String[] args) {
+    private String filePath;
 
-        ActorSystem actor = ActorSystem.create("sap1");
-
-
+    @Before
+    public void init() {
+        String userDir = System.getenv("tmp");
+        filePath = userDir + File.separator + "appendFile.txt";
     }
 
-    static class MyActor extends AbstractLoggingActor {
-
-        {
-            receive(ReceiveBuilder.match(MyMessage.class, this::onMessage).build());
-        }
-
-
-        private void onMessage(MyMessage message) {
-            System.out.println("MyMessage: " + message);
+    @Test
+    public void readFile() {
+        try (FileReader in = new FileReader(filePath);
+             BufferedReader reader = new BufferedReader(in);
+        ) {
+            while (true) {
+                Thread.sleep(1000);
+                String line = reader.readLine();
+                if (line == null) {
+                    continue;
+                }
+                System.out.println("read: " + line);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
-
-    static class MyMessage {
-
+    @Test
+    public void writeFile() throws Exception {
+        try (FileWriter in = new FileWriter(filePath);
+             BufferedWriter writer = new BufferedWriter(in);
+        ) {
+            while (true) {
+                writer.append(UUID.randomUUID().toString());
+                writer.append('\n');
+                writer.flush();
+                Thread.sleep(5000);
+                System.out.println("-------");
+            }
+        }
     }
 }

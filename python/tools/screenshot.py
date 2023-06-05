@@ -1,5 +1,6 @@
 # coding=utf-8
 # https://python-selenium-zh.readthedocs.io/zh_CN/latest/
+# http://chromedriver.storage.googleapis.com/index.html
 
 import base64
 import os

@@ -1,6 +1,7 @@
 package self.robin.examples.hadoop.sql.gen.expression.function;
 
-import com.iqiyi.pat.meta.corpus.sql.gen.expression.Expression;
+
+import self.robin.examples.hadoop.sql.gen.expression.Expression;
 
 /**
  * ...

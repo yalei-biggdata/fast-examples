@@ -10,6 +10,6 @@ import java.lang.annotation.Target;
  * @since: 2021/8/6 18:24
  */
 @Target({ElementType.TYPE, ElementType.FIELD})
-@Retention(RetentionPolicy.SOURCE)
+@Retention(RetentionPolicy.RUNTIME)
 public @interface MyData {
 }

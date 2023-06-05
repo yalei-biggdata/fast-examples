@@ -45,6 +45,7 @@ public class MyDataAnnotationProcessor extends AbstractProcessor {
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         // 获取注解类的集合，之后依次去处理
         Set<? extends Element> set = roundEnv.getElementsAnnotatedWith(MyData.class);
+        System.out.println("===========================================================");
         for (Element element : set) {
             // 获取当前类的抽象语法树
             JCTree tree = javacTrees.getTree(element);
@@ -187,7 +188,6 @@ public class MyDataAnnotationProcessor extends AbstractProcessor {
     private Name createGetMethodName(Name variableName) {
         String fieldName = variableName.toString();
         return names.fromString("get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1));
-
     }
 
     private Name createSetMethodName(Name variableName) {
