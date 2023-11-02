@@ -158,7 +158,7 @@ public class MostTest {
     }
 
     /**
-     * 播单个数不超过两个
+     * 预告片个数不超过两个
      */
     @Test
     public void prevueLimit2() {

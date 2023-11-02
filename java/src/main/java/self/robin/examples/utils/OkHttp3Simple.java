@@ -237,6 +237,16 @@ public class OkHttp3Simple implements Serializable {
         return requestInternal(param, () -> request, clazz, exceptionHandler);
     }
 
+    public <T> T getWithBuilder(String url, Consumer<Request.Builder> requestSupplier, Class<T> clazz) {
+        Request.Builder builder = new Request.Builder().url(url);
+        return requestInternal(Collections.emptyMap(), () -> {
+            requestSupplier.accept(builder);
+            return builder.get().build();
+        }, clazz, throwable -> {
+            throw new RuntimeException(throwable);
+        });
+    }
+
     public <T> T post(String url, Map<String, Object> param, Class<T> clazz, Consumer<Exception> exceptionHandler) {
         return post(url, param, clazz, this::doNothing, exceptionHandler);
     }
