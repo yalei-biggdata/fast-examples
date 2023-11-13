@@ -14,17 +14,18 @@
         <module>java</module>
         <module>commons</module>
         <module>flink</module>
+        <module>javaagent</module>
     </modules>
     <name>examples</name>
     <description>examples project</description>
 
     <properties>
-        <java.version>1.8</java.version>      
-        <lombok.version>1.18.12</lombok.version>        
+        <java.version>1.8</java.version>
+        <lombok.version>1.18.12</lombok.version>
         <slf4j.version>1.7.30</slf4j.version>
     </properties>
 
-    <dependencies>         
+    <dependencies>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-log4j12</artifactId>
@@ -35,36 +36,42 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>${lombok.version}</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>2.8.5</version>
+            <scope>provided</scope>
         </dependency>
-     
+
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>fastjson</artifactId>
             <version>1.2.73</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>2.6</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
             <version>3.8.1</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>commons-codec</groupId>
             <artifactId>commons-codec</artifactId>
             <version>1.14</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -78,6 +85,7 @@
             <groupId>com.googlecode.lanterna</groupId>
             <artifactId>lanterna</artifactId>
             <version>3.1.1</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 

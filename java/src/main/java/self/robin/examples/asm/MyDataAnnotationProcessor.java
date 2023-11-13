@@ -20,7 +20,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import java.util.Set;
 
-@AutoService(Processor.class)
+//@AutoService(Processor.class)
 @SupportedAnnotationTypes("self.robin.examples.asm.MyData")
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class MyDataAnnotationProcessor extends AbstractProcessor {
